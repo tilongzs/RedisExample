@@ -1,6 +1,11 @@
 ﻿#pragma once
+#include "redis++/redis++.h"
+#include "redis++/redis.h"
+using namespace sw::redis;
 
 #include <functional>
+#include <memory>
+using std::unique_ptr;
 using std::function;
 
 class CRedisExampleDlg : public CDialogEx
@@ -22,7 +27,15 @@ public:
 	};
 protected:
 	HICON m_hIcon;
+	CEdit _editRecv;
+	CIPAddressCtrl _redisIP;
+	CEdit _editRedisPort;
+	CButton _btnConn;
 
+	CEdit _editSetKey;
+	CEdit _editSetValue;
+	CEdit _editGet;
+	
 	virtual BOOL OnInitDialog();
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
@@ -30,6 +43,11 @@ protected:
 
 	void AppendMsg(const WCHAR* msg);
 	LRESULT OnFunction(WPARAM wParam, LPARAM lParam);
+
+private:	
+	unique_ptr<Redis> _redis;
 public:
-	CEdit _editRecv;
+	afx_msg void OnBtnConn();	
+	afx_msg void OnBtnSet();
+	afx_msg void OnBtnGet();	
 };

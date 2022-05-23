@@ -4,6 +4,8 @@
 #include "RedisExampleDlg.h"
 #include "afxdialogex.h"
 
+using namespace std;
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -33,11 +35,21 @@ void CRedisExampleDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_EDIT_MSG, _editRecv);
+	DDX_Control(pDX, IDC_IPADDRESS1, _redisIP);
+	DDX_Control(pDX, IDC_EDIT_PORT, _editRedisPort);
+	DDX_Control(pDX, IDC_BUTTON_CONN, _btnConn);
+	DDX_Control(pDX, IDC_EDIT_Get, _editGet);
+	DDX_Control(pDX, IDC_EDIT_SetKey, _editSetKey);
+	DDX_Control(pDX, IDC_EDIT_SetValue, _editSetValue);
 }
 
 BEGIN_MESSAGE_MAP(CRedisExampleDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_MESSAGE(WMSG_FUNCTION, &CRedisExampleDlg::OnFunction)
+	ON_BN_CLICKED(IDC_BUTTON_CONN, &CRedisExampleDlg::OnBtnConn)
+	ON_BN_CLICKED(IDC_BUTTON_Get, &CRedisExampleDlg::OnBtnGet)
+	ON_BN_CLICKED(IDC_BUTTON_Set, &CRedisExampleDlg::OnBtnSet)
 END_MESSAGE_MAP()
 
 
@@ -47,6 +59,9 @@ BOOL CRedisExampleDlg::OnInitDialog()
 
 	SetIcon(m_hIcon, TRUE);
 	SetIcon(m_hIcon, FALSE);
+
+	_redisIP.SetAddress(127, 0, 0, 1);
+	_editRedisPort.SetWindowText(L"6379");	
 
 	AppendMsg(L"启动");
 
@@ -126,4 +141,116 @@ LRESULT CRedisExampleDlg::OnFunction(WPARAM wParam, LPARAM lParam)
 	delete pFunc;
 
 	return TRUE;
+}
+
+void CRedisExampleDlg::OnBtnConn()
+{
+	BYTE ip1, ip2, ip3, ip4;
+	_redisIP.GetAddress(ip1, ip2, ip3, ip4);
+	string redisIP = str_format("%d.%d.%d.%d", ip1, ip2, ip3, ip4);
+
+	CString strRedisPort;
+	_editRedisPort.GetWindowText(strRedisPort);
+	int redisPort = _wtoi(strRedisPort);
+
+	try
+	{
+		// 连接设置
+		ConnectionOptions connection_options;
+		connection_options.host = redisIP.c_str();
+		connection_options.port = redisPort;
+		connection_options.socket_timeout = std::chrono::milliseconds(1000);
+		//connection_options.password = "auth";
+
+		// 连接池设置
+		ConnectionPoolOptions	pool_options;
+		pool_options.size = 8;
+		pool_options.wait_timeout = std::chrono::milliseconds(100);
+		pool_options.connection_lifetime = std::chrono::minutes(10);
+
+		// 创建连接（多线程安全） error LNK2019: 无法解析的外部符号 redisFreeSSLContext，函数 "public: void __cdecl sw::redis::tls::TlsContextDeleter::operator()(struct redisSSLContext *)const " (??RTlsContextDeleter@tls@redis@sw@@QEBAXPEAUredisSSLContext@@@Z) 中引用了该符号
+	//	_redis = make_unique<Redis>(connection_options, pool_options);
+
+		string strRedisConn = str_format("tcp://%s:%d", redisIP.c_str(), redisPort);
+		_redis = make_unique<Redis>(strRedisConn.c_str());
+
+		_redisIP.EnableWindow(FALSE);
+		_editRedisPort.EnableWindow(FALSE);
+		_btnConn.EnableWindow(FALSE);
+		AppendMsg(L"创建Redis连接完成");
+// 		redis.set("key2", "val2");
+// 		auto val = redis.get("key2");
+// 		if (val)
+// 		{
+// 			AppendMsg(CString(val->c_str()));
+// 		}
+	}
+	catch (const Error& e) 
+	{
+		AppendMsg(CString(e.what()));
+	}
+}
+
+void CRedisExampleDlg::OnBtnSet()
+{
+	CString strKey;
+	_editSetKey.GetWindowText(strKey);
+	if (strKey.IsEmpty())
+	{
+		MessageBox(L"strKey.IsEmpty()");
+		return;
+	}
+
+	CString strValue;
+	_editSetValue.GetWindowText(strValue);
+	if (strValue.IsEmpty())
+	{
+		MessageBox(L"strValue.IsEmpty()");
+		return;
+	}
+
+	try
+	{
+		bool ret = _redis->set(CStringA(strKey).GetBuffer(), CStringA(strValue).GetBuffer());
+		if (ret)
+		{
+			AppendMsg(L"Set成功");
+		}
+		else
+		{
+			AppendMsg(L"Set失败");
+		}
+	}
+	catch (const Error& e) 
+	{
+		AppendMsg(CString(e.what()));
+	}	
+}
+
+void CRedisExampleDlg::OnBtnGet()
+{
+	CString strKey;
+	_editGet.GetWindowText(strKey);
+	if (strKey.IsEmpty())
+	{
+		MessageBox(L"strKey.IsEmpty()");
+		return;
+	}
+
+	try
+	{
+		auto val = _redis->get(CStringA(strKey).GetBuffer());
+		if (val)
+		{
+			AppendMsg(CString(val->c_str()));
+		}
+		else
+		{
+			AppendMsg(L"Get为空");
+		}
+	}
+	catch (const Error& e)
+	{
+		AppendMsg(CString(e.what()));
+	}
 }
