@@ -5,6 +5,8 @@ VisualStudioVersion = 17.1.32421.90
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RedisExample", "RedisExample\RedisExample.vcxproj", "{D4A61264-474B-4EBE-894F-2ABBF7B0237C}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HiredisExample", "HiredisExample\HiredisExample.vcxproj", "{C7E4F69E-37B8-49E7-BCDA-6EB853948D61}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,14 @@ Global
 		{D4A61264-474B-4EBE-894F-2ABBF7B0237C}.Release|x64.Build.0 = Release|x64
 		{D4A61264-474B-4EBE-894F-2ABBF7B0237C}.Release|x86.ActiveCfg = Release|Win32
 		{D4A61264-474B-4EBE-894F-2ABBF7B0237C}.Release|x86.Build.0 = Release|Win32
+		{C7E4F69E-37B8-49E7-BCDA-6EB853948D61}.Debug|x64.ActiveCfg = Debug|x64
+		{C7E4F69E-37B8-49E7-BCDA-6EB853948D61}.Debug|x64.Build.0 = Debug|x64
+		{C7E4F69E-37B8-49E7-BCDA-6EB853948D61}.Debug|x86.ActiveCfg = Debug|Win32
+		{C7E4F69E-37B8-49E7-BCDA-6EB853948D61}.Debug|x86.Build.0 = Debug|Win32
+		{C7E4F69E-37B8-49E7-BCDA-6EB853948D61}.Release|x64.ActiveCfg = Release|x64
+		{C7E4F69E-37B8-49E7-BCDA-6EB853948D61}.Release|x64.Build.0 = Release|x64
+		{C7E4F69E-37B8-49E7-BCDA-6EB853948D61}.Release|x86.ActiveCfg = Release|Win32
+		{C7E4F69E-37B8-49E7-BCDA-6EB853948D61}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
