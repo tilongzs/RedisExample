@@ -50,4 +50,6 @@ public:
 	afx_msg void OnBtnConn();	
 	afx_msg void OnBtnSet();
 	afx_msg void OnBtnGet();	
+	CEdit _editSubcribeChannel;
+	afx_msg void OnBtnSubscribe();
 };

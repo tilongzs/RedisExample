@@ -41,6 +41,7 @@ void CRedisExampleDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_Get, _editGet);
 	DDX_Control(pDX, IDC_EDIT_SetKey, _editSetKey);
 	DDX_Control(pDX, IDC_EDIT_SetValue, _editSetValue);
+	DDX_Control(pDX, IDC_EDIT_Sub, _editSubcribeChannel);
 }
 
 BEGIN_MESSAGE_MAP(CRedisExampleDlg, CDialogEx)
@@ -50,6 +51,7 @@ BEGIN_MESSAGE_MAP(CRedisExampleDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_CONN, &CRedisExampleDlg::OnBtnConn)
 	ON_BN_CLICKED(IDC_BUTTON_Get, &CRedisExampleDlg::OnBtnGet)
 	ON_BN_CLICKED(IDC_BUTTON_Set, &CRedisExampleDlg::OnBtnSet)
+	ON_BN_CLICKED(IDC_BUTTON_Subscribe, &CRedisExampleDlg::OnBtnSubscribe)
 END_MESSAGE_MAP()
 
 
@@ -252,5 +254,34 @@ void CRedisExampleDlg::OnBtnGet()
 	catch (const Error& e)
 	{
 		AppendMsg(CString(e.what()));
+	}
+}
+
+void CRedisExampleDlg::OnBtnSubscribe()
+{
+	CString strTmp;
+	_editSubcribeChannel.GetWindowText(strTmp);
+
+	auto sub = _redis->subscriber();
+	sub.on_message([&](std::string channel, std::string msg)
+		{
+			string strLog = str_format("subscribe on_message channel:%s msg:%s", channel.c_str(), msg.c_str());
+
+			USES_CONVERSION;
+			AppendMsg(A2W(strLog.c_str()));
+		});
+
+	sub.subscribe(CStringA(strTmp).GetBuffer());
+
+	while (true)
+	{
+		try 
+		{
+			sub.consume();
+		}
+		catch (const Error& e) 
+		{
+			AppendMsg(CString(e.what()));
+		}
 	}
 }
