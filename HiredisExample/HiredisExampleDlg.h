@@ -1,10 +1,8 @@
 ﻿#pragma once
-#include "redis++/redis++.h"
-#include "redis++/redis.h"
-using namespace sw::redis;
 
 #include <functional>
 #include <memory>
+#include "hiredis/hiredis.h"
 using std::unique_ptr;
 using std::function;
 
@@ -17,15 +15,14 @@ public:
 	enum { IDD = IDD_REDISEXAMPLE_DIALOG };
 #endif
 
-	protected:
+protected:
 	virtual void DoDataExchange(CDataExchange* pDX);
-
 
 	struct TheadFunc
 	{
 		function<void()> Func;
 	};
-protected:
+
 	HICON m_hIcon;
 	CEdit _editRecv;
 	CIPAddressCtrl _redisIP;
@@ -35,23 +32,24 @@ protected:
 	CEdit _editSetKey;
 	CEdit _editSetValue;
 	CEdit _editGet;
-	CEdit _editSubcribeChannel;
-	CEdit _editSubscribeMessage;
+	CEdit _editChannel;
+	CEdit _editPublishMessage;
 
 	virtual BOOL OnInitDialog();
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
+	afx_msg void OnBtnConn();
+	afx_msg void OnBtnSet();
+	afx_msg void OnBtnGet();
+	afx_msg void OnBtnSubscribe();
+	afx_msg void OnBtnPublish();
 	DECLARE_MESSAGE_MAP()
-
-	void AppendMsg(const WCHAR* msg);
+		
 	LRESULT OnFunction(WPARAM wParam, LPARAM lParam);
 
 private:	
 	redisContext*  _redisContext = nullptr; // 非线程安全
 public:
-	afx_msg void OnBtnConn();	
-	afx_msg void OnBtnSet();
-	afx_msg void OnBtnGet();		
-	afx_msg void OnBtnSubscribe();
-	afx_msg void OnBtnPublish();
+	void AppendMsg(const WCHAR* msg);
+	afx_msg void OnBtnPSubscribe();
 };

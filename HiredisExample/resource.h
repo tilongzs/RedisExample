@@ -18,8 +18,9 @@
 #define IDC_BUTTON2                     1011
 #define IDC_BUTTON_Subscribe            1011
 #define IDC_EDIT_SubMessage             1012
-#define IDC_BUTTON_Subscribe2           1013
 #define IDC_BUTTON_Publish              1013
+#define IDC_BUTTON_Subscribe2           1014
+#define IDC_BUTTON_PSubscribe           1014
 
 // Next default values for new objects
 // 

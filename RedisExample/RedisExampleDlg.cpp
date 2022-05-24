@@ -41,7 +41,8 @@ void CRedisExampleDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_Get, _editGet);
 	DDX_Control(pDX, IDC_EDIT_SetKey, _editSetKey);
 	DDX_Control(pDX, IDC_EDIT_SetValue, _editSetValue);
-	DDX_Control(pDX, IDC_EDIT_Sub, _editSubcribeChannel);
+	DDX_Control(pDX, IDC_EDIT_Sub, _editChannel);
+	DDX_Control(pDX, IDC_EDIT_SubMessage, _editPublishMessage);
 }
 
 BEGIN_MESSAGE_MAP(CRedisExampleDlg, CDialogEx)
@@ -52,6 +53,8 @@ BEGIN_MESSAGE_MAP(CRedisExampleDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_Get, &CRedisExampleDlg::OnBtnGet)
 	ON_BN_CLICKED(IDC_BUTTON_Set, &CRedisExampleDlg::OnBtnSet)
 	ON_BN_CLICKED(IDC_BUTTON_Subscribe, &CRedisExampleDlg::OnBtnSubscribe)
+	ON_BN_CLICKED(IDC_BUTTON_Publish, &CRedisExampleDlg::OnBtnPublish)
+	ON_BN_CLICKED(IDC_BUTTON_PSubscribe, &CRedisExampleDlg::OnBtnPSubscribe)
 END_MESSAGE_MAP()
 
 
@@ -162,30 +165,24 @@ void CRedisExampleDlg::OnBtnConn()
 		connection_options.host = redisIP.c_str();
 		connection_options.port = redisPort;
 		connection_options.socket_timeout = std::chrono::milliseconds(1000);
+		connection_options.connect_timeout = std::chrono::milliseconds(1000);
 		//connection_options.password = "auth";
 
 		// 连接池设置
-		ConnectionPoolOptions	pool_options;
+		ConnectionPoolOptions pool_options;
 		pool_options.size = 8;
 		pool_options.wait_timeout = std::chrono::milliseconds(100);
 		pool_options.connection_lifetime = std::chrono::minutes(10);
 
-		// 创建连接（多线程安全） error LNK2019: 无法解析的外部符号 redisFreeSSLContext，函数 "public: void __cdecl sw::redis::tls::TlsContextDeleter::operator()(struct redisSSLContext *)const " (??RTlsContextDeleter@tls@redis@sw@@QEBAXPEAUredisSSLContext@@@Z) 中引用了该符号
-	//	_redis = make_unique<Redis>(connection_options, pool_options);
-
-		string strRedisConn = str_format("tcp://%s:%d", redisIP.c_str(), redisPort);
-		_redis = make_unique<Redis>(strRedisConn.c_str());
+		// 创建连接（多线程安全）
+		_redis = make_unique<Redis>(connection_options, pool_options);
+// 		string strRedisConn = str_format("tcp://%s:%d", redisIP.c_str(), redisPort);
+// 		_redis = make_unique<Redis>(strRedisConn.c_str());
 
 		_redisIP.EnableWindow(FALSE);
 		_editRedisPort.EnableWindow(FALSE);
 		_btnConn.EnableWindow(FALSE);
 		AppendMsg(L"创建Redis连接完成");
-// 		redis.set("key2", "val2");
-// 		auto val = redis.get("key2");
-// 		if (val)
-// 		{
-// 			AppendMsg(CString(val->c_str()));
-// 		}
 	}
 	catch (const Error& e) 
 	{
@@ -260,28 +257,115 @@ void CRedisExampleDlg::OnBtnGet()
 void CRedisExampleDlg::OnBtnSubscribe()
 {
 	CString strTmp;
-	_editSubcribeChannel.GetWindowText(strTmp);
-
-	auto sub = _redis->subscriber();
-	sub.on_message([&](std::string channel, std::string msg)
-		{
-			string strLog = str_format("subscribe on_message channel:%s msg:%s", channel.c_str(), msg.c_str());
-
-			USES_CONVERSION;
-			AppendMsg(A2W(strLog.c_str()));
-		});
-
-	sub.subscribe(CStringA(strTmp).GetBuffer());
-
-	while (true)
+	_editChannel.GetWindowText(strTmp);
+	if (strTmp.IsEmpty())
 	{
-		try 
+		MessageBox(L"channel IsEmpty()");
+		return;
+	}
+	AppendMsg(L"SUBSCRIBE成功");
+
+	thread([&, strTmp]
 		{
-			sub.consume();
-		}
-		catch (const Error& e) 
+			auto sub = _redis->subscriber();
+			sub.on_message([&](std::string channel, std::string msg)
+				{
+					string strLog = str_format("subscribe on_message channel:%s msg:%s", channel.c_str(), msg.c_str());
+
+					USES_CONVERSION;
+					AppendMsg(A2W(strLog.c_str()));
+				});
+
+			sub.subscribe(CStringA(strTmp).GetBuffer());
+
+			while (true)
+			{
+				try
+				{
+					sub.consume();
+				}
+				catch (const TimeoutError& e) 
+				{
+					// 长时间没收到订阅的消息，会导致socket_timeout 
+					continue;
+				}
+				catch (const Error& e)
+				{
+					AppendMsg(CString(e.what()));
+				}
+			}
+		}).detach();	
+}
+
+void CRedisExampleDlg::OnBtnPSubscribe()
+{
+	CString strTmp;
+	_editChannel.GetWindowText(strTmp);
+	if (strTmp.IsEmpty())
+	{
+		MessageBox(L"channel IsEmpty()");
+		return;
+	}
+	AppendMsg(L"PSUBSCRIBE成功");
+
+	thread([&, strTmp]
 		{
-			AppendMsg(CString(e.what()));
-		}
+			auto sub = _redis->subscriber();
+			sub.on_pmessage([&](std::string pattern, std::string channel, std::string msg)
+				{
+					string strLog = str_format("subscribe on_pmessage pattern:%s channel:%s msg:%s", pattern.c_str(), channel.c_str(), msg.c_str());
+
+					USES_CONVERSION;
+					AppendMsg(A2W(strLog.c_str()));
+				});
+
+			sub.psubscribe(CStringA(strTmp).GetBuffer());
+
+			while (true)
+			{
+				try
+				{
+					sub.consume();
+				}
+				catch (const TimeoutError& e)
+				{
+					// 长时间没收到订阅的消息，会导致socket_timeout 
+					continue;
+				}
+				catch (const Error& e)
+				{
+					AppendMsg(CString(e.what()));
+				}
+			}
+		}).detach();
+}
+
+void CRedisExampleDlg::OnBtnPublish()
+{
+	USES_CONVERSION;
+	CString strTmp;
+	_editChannel.GetWindowText(strTmp);
+	if (strTmp.IsEmpty())
+	{
+		MessageBox(L"channel IsEmpty()");
+		return;
+	}
+	string strChannel = W2A(strTmp);
+
+	_editPublishMessage.GetWindowText(strTmp);
+	if (strTmp.IsEmpty())
+	{
+		MessageBox(L"message IsEmpty()");
+		return;
+	}
+	string strMessage = W2A(strTmp);
+
+	try
+	{
+		_redis->publish(strChannel.c_str(), strMessage.c_str());
+	}
+	catch (const Error& e)
+	{
+		AppendMsg(CString(e.what()));
 	}
 }

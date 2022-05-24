@@ -25,7 +25,7 @@
 #include "connection.h"
 #include "shards.h"
 #include "reply.h"
-#include "tls/tls.h"
+#include "tls.h"
 
 namespace sw {
 
