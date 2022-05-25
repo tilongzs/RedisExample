@@ -164,7 +164,7 @@ void CRedisExampleDlg::OnBtnConn()
 		ConnectionOptions connection_options;
 		connection_options.host = redisIP.c_str();
 		connection_options.port = redisPort;
-		connection_options.socket_timeout = std::chrono::milliseconds(1000);
+		//connection_options.socket_timeout = std::chrono::milliseconds(1000); // 防止subscribe超时
 		connection_options.connect_timeout = std::chrono::milliseconds(1000);
 		//connection_options.password = "auth";
 
@@ -284,11 +284,11 @@ void CRedisExampleDlg::OnBtnSubscribe()
 				{
 					sub.consume();
 				}
-				catch (const TimeoutError& e) 
-				{
-					// 长时间没收到订阅的消息，会导致socket_timeout 
-					continue;
-				}
+// 				catch (const TimeoutError& e) 
+// 				{
+// 					// 长时间没收到订阅的消息，会导致socket_timeout 
+// 					continue;
+// 				}
 				catch (const Error& e)
 				{
 					AppendMsg(CString(e.what()));
