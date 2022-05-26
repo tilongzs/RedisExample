@@ -164,7 +164,7 @@ void CRedisExampleDlg::OnBtnConn()
 		ConnectionOptions connection_options;
 		connection_options.host = redisIP.c_str();
 		connection_options.port = redisPort;
-		//connection_options.socket_timeout = std::chrono::milliseconds(1000); // 防止subscribe超时
+		//connection_options.socket_timeout = std::chrono::milliseconds(1000); // 防止长时间没收到订阅的消息，会导致socket_timeout 
 		connection_options.connect_timeout = std::chrono::milliseconds(1000);
 		//connection_options.password = "auth";
 
@@ -267,33 +267,50 @@ void CRedisExampleDlg::OnBtnSubscribe()
 
 	thread([&, strTmp]
 		{
-			auto sub = _redis->subscriber();
-			sub.on_message([&](std::string channel, std::string msg)
-				{
-					string strLog = str_format("subscribe on_message channel:%s msg:%s", channel.c_str(), msg.c_str());
-
-					USES_CONVERSION;
-					AppendMsg(A2W(strLog.c_str()));
-				});
-
-			sub.subscribe(CStringA(strTmp).GetBuffer());
-
 			while (true)
 			{
 				try
 				{
-					sub.consume();
+					auto sub = _redis->subscriber();
+
+					// 处理收到的订阅消息
+					sub.on_message([&](std::string channel, std::string msg)
+						{
+							string strLog = str_format("subscribe on_message channel:%s msg:%s", channel.c_str(), msg.c_str());
+
+							USES_CONVERSION;
+							AppendMsg(A2W(strLog.c_str()));
+						});
+
+					// 订阅channel
+					sub.subscribe(CStringA(strTmp).GetBuffer());
+
+					while (true)
+					{
+						try
+						{
+							sub.consume();
+						}
+						catch (const TimeoutError& e)
+						{
+							// socket_timeout or connect_timeout
+							AppendMsg(L"sub.consume() timeout");
+							break;
+						}
+						catch (const Error& e)
+						{
+							AppendMsg(L"sub.consume() exception");
+							AppendMsg(CString(e.what()));
+							break;
+						}
+					}
 				}
-// 				catch (const TimeoutError& e) 
-// 				{
-// 					// 长时间没收到订阅的消息，会导致socket_timeout 
-// 					continue;
-// 				}
 				catch (const Error& e)
 				{
+					AppendMsg(L"subscribe exception");
 					AppendMsg(CString(e.what()));
 				}
-			}
+			}			
 		}).detach();	
 }
 
@@ -310,33 +327,47 @@ void CRedisExampleDlg::OnBtnPSubscribe()
 
 	thread([&, strTmp]
 		{
-			auto sub = _redis->subscriber();
-			sub.on_pmessage([&](std::string pattern, std::string channel, std::string msg)
-				{
-					string strLog = str_format("subscribe on_pmessage pattern:%s channel:%s msg:%s", pattern.c_str(), channel.c_str(), msg.c_str());
-
-					USES_CONVERSION;
-					AppendMsg(A2W(strLog.c_str()));
-				});
-
-			sub.psubscribe(CStringA(strTmp).GetBuffer());
-
 			while (true)
 			{
 				try
 				{
-					sub.consume();
-				}
-				catch (const TimeoutError& e)
-				{
-					// 长时间没收到订阅的消息，会导致socket_timeout 
-					continue;
+					auto sub = _redis->subscriber();
+					sub.on_pmessage([&](std::string pattern, std::string channel, std::string msg)
+						{
+							string strLog = str_format("subscribe on_pmessage pattern:%s channel:%s msg:%s", pattern.c_str(), channel.c_str(), msg.c_str());
+
+							USES_CONVERSION;
+							AppendMsg(A2W(strLog.c_str()));
+						});
+
+					sub.psubscribe(CStringA(strTmp).GetBuffer());
+
+					while (true)
+					{
+						try
+						{
+							sub.consume();
+						}
+						catch (const TimeoutError& e)
+						{
+							// socket_timeout or connect_timeout
+							AppendMsg(L"sub.consume() timeout");
+							break;
+						}
+						catch (const Error& e)
+						{
+							AppendMsg(L"sub.consume() exception");
+							AppendMsg(CString(e.what()));
+							break;
+						}
+					}
 				}
 				catch (const Error& e)
 				{
+					AppendMsg(L"subscribe exception");
 					AppendMsg(CString(e.what()));
 				}
-			}
+			}					
 		}).detach();
 }
 
