@@ -66,11 +66,11 @@ BOOL CRedisExampleDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);
 
 	_redisIP.SetAddress(127, 0, 0, 1);
-	_editRedisPort.SetWindowText(L"6379");	
+	_editRedisPort.SetWindowText(L"6379");
 
 	AppendMsg(L"启动");
 
-	return TRUE; 
+	return TRUE;
 }
 
 void CRedisExampleDlg::OnPaint()
@@ -164,7 +164,7 @@ void CRedisExampleDlg::OnBtnConn()
 		ConnectionOptions connection_options;
 		connection_options.host = redisIP.c_str();
 		connection_options.port = redisPort;
-		//connection_options.socket_timeout = std::chrono::milliseconds(1000); // 防止长时间没收到订阅的消息，会导致socket_timeout 
+		connection_options.socket_timeout = std::chrono::milliseconds(2000); // 长时间没收到订阅的消息，会导致socket_timeout 
 		connection_options.connect_timeout = std::chrono::milliseconds(1000);
 		//connection_options.password = "auth";
 
@@ -176,15 +176,15 @@ void CRedisExampleDlg::OnBtnConn()
 
 		// 创建连接（多线程安全）
 		_redis = make_unique<Redis>(connection_options, pool_options);
-// 		string strRedisConn = str_format("tcp://%s:%d", redisIP.c_str(), redisPort);
-// 		_redis = make_unique<Redis>(strRedisConn.c_str());
+		// 		string strRedisConn = str_format("tcp://%s:%d", redisIP.c_str(), redisPort);
+		// 		_redis = make_unique<Redis>(strRedisConn.c_str());
 
 		_redisIP.EnableWindow(FALSE);
 		_editRedisPort.EnableWindow(FALSE);
 		_btnConn.EnableWindow(FALSE);
 		AppendMsg(L"创建Redis连接完成");
 	}
-	catch (const Error& e) 
+	catch (const Error& e)
 	{
 		AppendMsg(CString(e.what()));
 	}
@@ -220,10 +220,10 @@ void CRedisExampleDlg::OnBtnSet()
 			AppendMsg(L"Set失败");
 		}
 	}
-	catch (const Error& e) 
+	catch (const Error& e)
 	{
 		AppendMsg(CString(e.what()));
-	}	
+	}
 }
 
 void CRedisExampleDlg::OnBtnGet()
@@ -295,7 +295,7 @@ void CRedisExampleDlg::OnBtnSubscribe()
 						{
 							// socket_timeout or connect_timeout
 							AppendMsg(L"sub.consume() timeout");
-							break;
+							continue;
 						}
 						catch (const Error& e)
 						{
@@ -310,8 +310,10 @@ void CRedisExampleDlg::OnBtnSubscribe()
 					AppendMsg(L"subscribe exception");
 					AppendMsg(CString(e.what()));
 				}
-			}			
-		}).detach();	
+			}
+
+			AppendMsg(L"subscribe end");
+		}).detach();
 }
 
 void CRedisExampleDlg::OnBtnPSubscribe()
@@ -352,7 +354,7 @@ void CRedisExampleDlg::OnBtnPSubscribe()
 						{
 							// socket_timeout or connect_timeout
 							AppendMsg(L"sub.consume() timeout");
-							break;
+							continue;
 						}
 						catch (const Error& e)
 						{
@@ -367,7 +369,9 @@ void CRedisExampleDlg::OnBtnPSubscribe()
 					AppendMsg(L"subscribe exception");
 					AppendMsg(CString(e.what()));
 				}
-			}					
+			}
+
+			AppendMsg(L"subscribe end");
 		}).detach();
 }
 
