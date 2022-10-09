@@ -3,8 +3,15 @@
 #include <functional>
 #include <memory>
 #include "hiredis/hiredis.h"
+#include <atomic>
+#include <mutex>
 using std::unique_ptr;
 using std::function;
+using std::atomic;
+using std::mutex;
+using std::shared_ptr;
+using std::list;
+using std::string;
 
 class CHiredisExampleDlg : public CDialogEx
 {
@@ -23,11 +30,25 @@ protected:
 		function<void()> Func;
 	};
 
+	class RedisController
+	{
+	public:
+		string connect(const char* ip, int port);
+		bool reconnect();
+		mutex					mtxBusy;
+		redisContext*			redisContext;
+		atomic<bool>			isConnect;
+	};
+
 	HICON m_hIcon;
 	CEdit _editRecv;
 	CIPAddressCtrl _redisIP;
 	CEdit _editRedisPort;
 	CButton _btnConn;
+	CButton _btnReconn;
+
+	string	_ip;
+	int		_port;
 
 	CEdit _editSetKey;
 	CEdit _editSetValue;
@@ -49,7 +70,11 @@ protected:
 
 private:	
 	redisContext*  _redisContext = nullptr; // 非线程安全
+	mutex	_mtxRedisControllerList;
+	list<shared_ptr<RedisController>> _redisControllerList;
 public:
 	void AppendMsg(const WCHAR* msg);
 	afx_msg void OnBtnPSubscribe();
+	shared_ptr<RedisController> GetConnectedRedisController();
+	afx_msg void OnBtnReconn();
 };

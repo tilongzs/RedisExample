@@ -26,6 +26,41 @@ std::string static str_format(const std::string& format, Args ... args)
 
 #define WMSG_FUNCTION		WM_USER + 1
 
+
+string CHiredisExampleDlg::RedisController::connect(const char* ip, int port)
+{
+	redisOptions connectionOption = { 0 };
+	struct timeval timeout = { 1, 500000 }; // 连接超时：1.5 seconds	
+	REDIS_OPTIONS_SET_TCP(&connectionOption, ip, port);
+	REDIS_OPTIONS_SET_PRIVDATA(&connectionOption, this, nullptr); // 设置回调函数参数
+	connectionOption.connect_timeout = &timeout;
+	//connectionOption.push_cb = PushCallback;
+	redisContext = redisConnectWithOptions(&connectionOption);
+
+	if (redisContext == NULL || redisContext->err)
+	{
+		if (redisContext)
+		{
+			return redisContext->errstr;
+		}
+		else
+		{
+			return "failed";
+		}
+	}
+	else
+	{
+		// 连接成功
+		return "";
+	}
+}
+
+bool CHiredisExampleDlg::RedisController::reconnect()
+{
+	 isConnect = (REDIS_OK == redisReconnect(redisContext));
+	 return isConnect;
+}
+
 CHiredisExampleDlg::CHiredisExampleDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_REDISEXAMPLE_DIALOG, pParent)
 {
@@ -44,6 +79,7 @@ void CHiredisExampleDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_SetValue, _editSetValue);
 	DDX_Control(pDX, IDC_EDIT_SubChannel, _editChannel);
 	DDX_Control(pDX, IDC_EDIT_SubMessage, _editPublishMessage);
+	DDX_Control(pDX, IDC_BUTTON_RECONN, _btnReconn);
 }
 
 BEGIN_MESSAGE_MAP(CHiredisExampleDlg, CDialogEx)
@@ -56,6 +92,7 @@ BEGIN_MESSAGE_MAP(CHiredisExampleDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_Subscribe, &CHiredisExampleDlg::OnBtnSubscribe)
 	ON_BN_CLICKED(IDC_BUTTON_Publish, &CHiredisExampleDlg::OnBtnPublish)
 	ON_BN_CLICKED(IDC_BUTTON_PSubscribe, &CHiredisExampleDlg::OnBtnPSubscribe)
+	ON_BN_CLICKED(IDC_BUTTON_RECONN, &CHiredisExampleDlg::OnBtnReconn)
 END_MESSAGE_MAP()
 
 
@@ -68,6 +105,7 @@ BOOL CHiredisExampleDlg::OnInitDialog()
 
 	_redisIP.SetAddress(127, 0, 0, 1);
 	_editRedisPort.SetWindowText(L"6379");	
+	_btnReconn.EnableWindow(FALSE); 
 
 	AppendMsg(L"启动");
 
@@ -202,15 +240,15 @@ void CHiredisExampleDlg::OnBtnConn()
 {
 	BYTE ip1, ip2, ip3, ip4;
 	_redisIP.GetAddress(ip1, ip2, ip3, ip4);
-	string redisIP = str_format("%d.%d.%d.%d", ip1, ip2, ip3, ip4);
+	_ip = str_format("%d.%d.%d.%d", ip1, ip2, ip3, ip4);
 
 	CString strRedisPort;
 	_editRedisPort.GetWindowText(strRedisPort);
-	int redisPort = _wtoi(strRedisPort);
+	_port = _wtoi(strRedisPort);
 
 	redisOptions connectionOption = { 0 };
 	struct timeval timeout = { 1, 500000 }; // 连接超时：1.5 seconds	
-	REDIS_OPTIONS_SET_TCP(&connectionOption, redisIP.c_str(), redisPort);
+	REDIS_OPTIONS_SET_TCP(&connectionOption, _ip.c_str(), _port);
 	REDIS_OPTIONS_SET_PRIVDATA(&connectionOption, this, nullptr); // 设置回调函数参数
 	connectionOption.connect_timeout = &timeout;
 	connectionOption.push_cb = PushCallback;
@@ -232,6 +270,7 @@ void CHiredisExampleDlg::OnBtnConn()
 		_redisIP.EnableWindow(FALSE);
 		_editRedisPort.EnableWindow(FALSE);
 		_btnConn.EnableWindow(FALSE);
+		_btnReconn.EnableWindow(TRUE);
 
 		AppendMsg(L"创建Redis连接完成");
 	}
@@ -255,19 +294,29 @@ void CHiredisExampleDlg::OnBtnSet()
 		return;
 	}
 
-	USES_CONVERSION;
-	string cmd = str_format("SET %s %s", W2A(strKey), W2A(strValue));
-	redisReply* reply = (redisReply*)redisCommand(_redisContext, cmd.c_str());
-	if (reply)
+	shared_ptr<RedisController> redisController = GetConnectedRedisController();
+	if (redisController)
 	{
-		AppendMsg(L"Set成功");
+		USES_CONVERSION;
+		string cmd = str_format("SET %s %s", W2A(strKey), W2A(strValue));
+		redisReply* reply = (redisReply*)redisCommand(redisController->redisContext, cmd.c_str());
+		if (reply)
+		{
+			AppendMsg(L"Set成功");
+		}
+		else
+		{
+			AppendMsg(L"Set失败");
+			AppendMsg(A2W(redisController->redisContext->errstr));
+		}
+		freeReplyObject(reply);
+
+		redisController->mtxBusy.unlock();
 	}
 	else
 	{
-		AppendMsg(L"Set失败");
-		AppendMsg(A2W(_redisContext->errstr));
+		AppendMsg(L"Redis未连接");
 	}
-	freeReplyObject(reply);
 }
 
 void CHiredisExampleDlg::OnBtnGet()
@@ -280,26 +329,36 @@ void CHiredisExampleDlg::OnBtnGet()
 		return;
 	}
 
-	USES_CONVERSION;
-	string cmd = str_format("GET %s", W2A(strKey));
-	redisReply* reply = (redisReply*)redisCommand(_redisContext, cmd.c_str());
-	if (reply)
+	shared_ptr<RedisController> redisController = GetConnectedRedisController();
+	if (redisController)
 	{
-		if (reply->type != REDIS_REPLY_NIL)
+		USES_CONVERSION;
+		string cmd = str_format("GET %s", W2A(strKey));
+		redisReply* reply = (redisReply*)redisCommand(redisController->redisContext, cmd.c_str());
+		if (reply)
 		{
-			AppendMsg(CString(reply->str));
+			if (reply->type != REDIS_REPLY_NIL)
+			{
+				AppendMsg(CString(reply->str));
+			}
+			else
+			{
+				AppendMsg(L"Get为空");
+			}
 		}
 		else
 		{
-			AppendMsg(L"Get为空");
-		}	
+			AppendMsg(L"Get失败");
+			AppendMsg(A2W(redisController->redisContext->errstr));
+		}
+		freeReplyObject(reply);
+
+		redisController->mtxBusy.unlock();
 	}
 	else
 	{
-		AppendMsg(L"Get失败");
-		AppendMsg(A2W(_redisContext->errstr));
+		AppendMsg(L"Redis未连接");
 	}
-	freeReplyObject(reply);
 }
 
 void CHiredisExampleDlg::OnBtnSubscribe()
@@ -314,42 +373,52 @@ void CHiredisExampleDlg::OnBtnSubscribe()
 
 	thread([&, strTmp]
 		{
-			USES_CONVERSION;
-			string cmd = str_format("SUBSCRIBE %s", W2A(strTmp));
-			redisReply* reply = (redisReply*)redisCommand(_redisContext, cmd.c_str());
-			if (reply)
+			shared_ptr<RedisController> redisController = GetConnectedRedisController();
+			if (redisController)
 			{
-				freeReplyObject(reply);
-				AppendMsg(L"SUBSCRIBE成功");
-				while (redisGetReply(_redisContext, (void**)&reply) == REDIS_OK)
+				USES_CONVERSION;
+				string cmd = str_format("SUBSCRIBE %s", W2A(strTmp));
+				redisReply* reply = (redisReply*)redisCommand(redisController->redisContext, cmd.c_str());
+				if (reply)
 				{
-					if (reply)
+					freeReplyObject(reply);
+					AppendMsg(L"SUBSCRIBE成功");
+					while (redisGetReply(redisController->redisContext, (void**)&reply) == REDIS_OK)
 					{
-						if (reply->type == REDIS_REPLY_ARRAY)
+						if (reply)
 						{
-							for (int i = 0; i < reply->elements; i++)
+							if (reply->type == REDIS_REPLY_ARRAY)
 							{
-								AppendMsg(CString(reply->element[i]->str));
+								for (int i = 0; i < reply->elements; i++)
+								{
+									AppendMsg(CString(reply->element[i]->str));
+								}
+							}
+							else
+							{
+								AppendMsg(CString(reply->str));
 							}
 						}
 						else
 						{
-							AppendMsg(CString(reply->str));
-						}						
-					}
-					else
-					{
-						AppendMsg(L"SUBSCRIBE过程中遇到错误");
-						AppendMsg(A2W(_redisContext->errstr));
-					}
+							AppendMsg(L"SUBSCRIBE过程中遇到错误");
+							AppendMsg(A2W(redisController->redisContext->errstr));
+						}
 
-					freeReplyObject(reply);
+						freeReplyObject(reply);
+					}
 				}
+				else
+				{
+					AppendMsg(L"SUBSCRIBE失败");
+					AppendMsg(A2W(redisController->redisContext->errstr));
+				}
+
+				redisController->mtxBusy.unlock();
 			}
 			else
 			{
-				AppendMsg(L"SUBSCRIBE失败");
-				AppendMsg(A2W(_redisContext->errstr));
+				AppendMsg(L"Redis未连接");
 			}
 		}).detach();
 }
@@ -406,6 +475,32 @@ void CHiredisExampleDlg::OnBtnPSubscribe()
 		}).detach();
 }
 
+shared_ptr<CHiredisExampleDlg::RedisController> CHiredisExampleDlg::GetConnectedRedisController()
+{
+	lock_guard<mutex> lock(_mtxRedisControllerList);
+	shared_ptr<RedisController> redisController = nullptr;
+	for (auto& iter : _redisControllerList)
+	{
+		if (iter->mtxBusy.try_lock())
+		{
+			redisController = iter;
+			break;
+		}
+	}
+
+	if (!redisController)
+	{
+		redisController = make_shared<RedisController>();
+		redisController->mtxBusy.lock();
+		if (redisController->connect(_ip.c_str(), _port).empty())
+		{
+			_redisControllerList.emplace_back(redisController);
+		}
+	}
+
+	return redisController;
+}
+
 void CHiredisExampleDlg::OnBtnPublish()
 {
 	USES_CONVERSION;
@@ -426,24 +521,45 @@ void CHiredisExampleDlg::OnBtnPublish()
 	}
 	string strMessage = W2A(strTmp);
 
-	string cmd = str_format("PUBLISH %s %s", strChannel.c_str(), strMessage.c_str());
-	redisReply* reply = (redisReply*)redisCommand(_redisContext, cmd.c_str());
-	if (reply)
+	shared_ptr<RedisController> redisController = GetConnectedRedisController();
+	if (redisController)
 	{
-		if (reply->type != REDIS_REPLY_NIL)
+		string cmd = str_format("PUBLISH %s %s", strChannel.c_str(), strMessage.c_str());
+		redisReply* reply = (redisReply*)redisCommand(redisController->redisContext, cmd.c_str());
+		if (reply)
 		{
-			AppendMsg(L"PUBLISH成功");
+			if (reply->type != REDIS_REPLY_NIL)
+			{
+				AppendMsg(L"PUBLISH成功");
+			}
+			else
+			{
+				AppendMsg(L"PUBLISH为空");
+			}
 		}
 		else
 		{
-			AppendMsg(L"PUBLISH为空");
+			AppendMsg(L"PUBLISH失败");
+			AppendMsg(A2W(redisController->redisContext->errstr));
 		}
+		freeReplyObject(reply);
+
+		redisController->mtxBusy.unlock();
 	}
 	else
 	{
-		AppendMsg(L"PUBLISH失败");
-		AppendMsg(A2W(_redisContext->errstr));
+		AppendMsg(L"Redis未连接");
 	}
-	freeReplyObject(reply);
 }
 
+void CHiredisExampleDlg::OnBtnReconn()
+{
+	lock_guard<mutex> lock(_mtxRedisControllerList);
+	for (auto& iter : _redisControllerList)
+	{
+		if (!iter->reconnect())
+		{
+			AppendMsg(L"redis重连失败");
+		}
+	}
+}

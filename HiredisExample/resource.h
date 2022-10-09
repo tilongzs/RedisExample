@@ -8,6 +8,8 @@
 #define IDC_BUTTON_CONN                 1001
 #define IDC_IPADDRESS1                  1002
 #define IDC_EDIT_PORT                   1003
+#define IDC_BUTTON_CONN2                1004
+#define IDC_BUTTON_RECONN               1004
 #define IDC_EDIT_Get                    1005
 #define IDC_BUTTON_Get                  1006
 #define IDC_EDIT_SetKey                 1007
