@@ -60,10 +60,12 @@ protected:
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
 	afx_msg void OnBtnConn();
+	afx_msg void OnBtnReconn();
 	afx_msg void OnBtnSet();
 	afx_msg void OnBtnGet();
 	afx_msg void OnBtnSubscribe();
 	afx_msg void OnBtnPublish();
+	afx_msg void OnBtnPSubscribe();
 	DECLARE_MESSAGE_MAP()
 		
 	LRESULT OnFunction(WPARAM wParam, LPARAM lParam);
@@ -74,7 +76,5 @@ private:
 	list<shared_ptr<RedisController>> _redisControllerList;
 public:
 	void AppendMsg(const WCHAR* msg);
-	afx_msg void OnBtnPSubscribe();
 	shared_ptr<RedisController> GetConnectedRedisController();
-	afx_msg void OnBtnReconn();
 };

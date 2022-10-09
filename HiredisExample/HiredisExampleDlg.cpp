@@ -303,13 +303,13 @@ void CHiredisExampleDlg::OnBtnSet()
 		if (reply)
 		{
 			AppendMsg(L"Set成功");
+			freeReplyObject(reply);
 		}
 		else
 		{
 			AppendMsg(L"Set失败");
 			AppendMsg(A2W(redisController->redisContext->errstr));
 		}
-		freeReplyObject(reply);
 
 		redisController->mtxBusy.unlock();
 	}
@@ -345,13 +345,14 @@ void CHiredisExampleDlg::OnBtnGet()
 			{
 				AppendMsg(L"Get为空");
 			}
+
+			freeReplyObject(reply);
 		}
 		else
 		{
 			AppendMsg(L"Get失败");
 			AppendMsg(A2W(redisController->redisContext->errstr));
 		}
-		freeReplyObject(reply);
 
 		redisController->mtxBusy.unlock();
 	}
@@ -398,14 +399,14 @@ void CHiredisExampleDlg::OnBtnSubscribe()
 							{
 								AppendMsg(CString(reply->str));
 							}
+
+							freeReplyObject(reply);
 						}
 						else
 						{
 							AppendMsg(L"SUBSCRIBE过程中遇到错误");
 							AppendMsg(A2W(redisController->redisContext->errstr));
 						}
-
-						freeReplyObject(reply);
 					}
 				}
 				else
@@ -457,14 +458,14 @@ void CHiredisExampleDlg::OnBtnPSubscribe()
 						{
 							AppendMsg(CString(reply->str));
 						}
+
+						freeReplyObject(reply);
 					}
 					else
 					{
 						AppendMsg(L"PSUBSCRIBE过程中遇到错误");
 						AppendMsg(A2W(_redisContext->errstr));
 					}
-
-					freeReplyObject(reply);
 				}
 			}
 			else
@@ -536,13 +537,13 @@ void CHiredisExampleDlg::OnBtnPublish()
 			{
 				AppendMsg(L"PUBLISH为空");
 			}
+			freeReplyObject(reply);
 		}
 		else
 		{
 			AppendMsg(L"PUBLISH失败");
 			AppendMsg(A2W(redisController->redisContext->errstr));
 		}
-		freeReplyObject(reply);
 
 		redisController->mtxBusy.unlock();
 	}
