@@ -21,6 +21,9 @@
 #define IDC_BUTTON_Publish              1013
 #define IDC_BUTTON_Subscribe2           1014
 #define IDC_BUTTON_PSubscribe           1014
+#define IDC_EDIT_DB                     1015
+#define IDC_BUTTON_Get2                 1016
+#define IDC_BUTTON_DB_CHANGE            1016
 
 // Next default values for new objects
 // 

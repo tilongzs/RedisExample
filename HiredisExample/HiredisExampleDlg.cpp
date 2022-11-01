@@ -44,6 +44,7 @@ void CHiredisExampleDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_SetValue, _editSetValue);
 	DDX_Control(pDX, IDC_EDIT_SubChannel, _editChannel);
 	DDX_Control(pDX, IDC_EDIT_SubMessage, _editPublishMessage);
+	DDX_Control(pDX, IDC_EDIT_DB, _dbNum);
 }
 
 BEGIN_MESSAGE_MAP(CHiredisExampleDlg, CDialogEx)
@@ -56,6 +57,7 @@ BEGIN_MESSAGE_MAP(CHiredisExampleDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_Subscribe, &CHiredisExampleDlg::OnBtnSubscribe)
 	ON_BN_CLICKED(IDC_BUTTON_Publish, &CHiredisExampleDlg::OnBtnPublish)
 	ON_BN_CLICKED(IDC_BUTTON_PSubscribe, &CHiredisExampleDlg::OnBtnPSubscribe)
+	ON_BN_CLICKED(IDC_BUTTON_DB_CHANGE, &CHiredisExampleDlg::OnBtnDbChange)
 END_MESSAGE_MAP()
 
 
@@ -68,6 +70,7 @@ BOOL CHiredisExampleDlg::OnInitDialog()
 
 	_redisIP.SetAddress(127, 0, 0, 1);
 	_editRedisPort.SetWindowText(L"6379");	
+	_dbNum.SetWindowText(L"0");
 
 	AppendMsg(L"启动");
 
@@ -234,6 +237,9 @@ void CHiredisExampleDlg::OnBtnConn()
 		_btnConn.EnableWindow(FALSE);
 
 		AppendMsg(L"创建Redis连接完成");
+
+		// 切换数据库
+		OnBtnDbChange();
 	}
 }
 
@@ -256,8 +262,7 @@ void CHiredisExampleDlg::OnBtnSet()
 	}
 
 	USES_CONVERSION;
-	string cmd = str_format("SET %s %s", W2A(strKey), W2A(strValue));
-	redisReply* reply = (redisReply*)redisCommand(_redisContext, cmd.c_str());
+	redisReply* reply = (redisReply*)redisCommand(_redisContext, "SET %s %s", W2A(strKey), W2A(strValue));
 	if (reply)
 	{
 		AppendMsg(L"Set成功");
@@ -281,8 +286,7 @@ void CHiredisExampleDlg::OnBtnGet()
 	}
 
 	USES_CONVERSION;
-	string cmd = str_format("GET %s", W2A(strKey));
-	redisReply* reply = (redisReply*)redisCommand(_redisContext, cmd.c_str());
+	redisReply* reply = (redisReply*)redisCommand(_redisContext, "GET %s", W2A(strKey));
 	if (reply)
 	{
 		if (reply->type != REDIS_REPLY_NIL)
@@ -315,8 +319,7 @@ void CHiredisExampleDlg::OnBtnSubscribe()
 	thread([&, strTmp]
 		{
 			USES_CONVERSION;
-			string cmd = str_format("SUBSCRIBE %s", W2A(strTmp));
-			redisReply* reply = (redisReply*)redisCommand(_redisContext, cmd.c_str());
+			redisReply* reply = (redisReply*)redisCommand(_redisContext, "SUBSCRIBE %s", W2A(strTmp));
 			if (reply)
 			{
 				freeReplyObject(reply);
@@ -367,8 +370,7 @@ void CHiredisExampleDlg::OnBtnPSubscribe()
 	thread([&, strTmp]
 		{
 			USES_CONVERSION;
-			string cmd = str_format("PSUBSCRIBE %s", W2A(strTmp));
-			redisReply* reply = (redisReply*)redisCommand(_redisContext, cmd.c_str());
+			redisReply* reply = (redisReply*)redisCommand(_redisContext, "PSUBSCRIBE %s", W2A(strTmp));
 			if (reply)
 			{
 				freeReplyObject(reply);
@@ -426,8 +428,7 @@ void CHiredisExampleDlg::OnBtnPublish()
 	}
 	string strMessage = W2A(strTmp);
 
-	string cmd = str_format("PUBLISH %s %s", strChannel.c_str(), strMessage.c_str());
-	redisReply* reply = (redisReply*)redisCommand(_redisContext, cmd.c_str());
+	redisReply* reply = (redisReply*)redisCommand(_redisContext, "PUBLISH %s %s", strChannel.c_str(), strMessage.c_str());
 	if (reply)
 	{
 		if (reply->type != REDIS_REPLY_NIL)
@@ -447,3 +448,20 @@ void CHiredisExampleDlg::OnBtnPublish()
 	freeReplyObject(reply);
 }
 
+void CHiredisExampleDlg::OnBtnDbChange()
+{
+	CString dbNum;
+	_dbNum.GetWindowText(dbNum);
+	redisReply* reply = (redisReply*)redisCommand(_redisContext, "select %d", _wtoi(dbNum));
+	if (reply)
+	{
+		AppendMsg(L"切换数据库成功");
+	}
+	else
+	{
+		USES_CONVERSION;
+		AppendMsg(L"切换数据库失败");
+		AppendMsg(A2W(_redisContext->errstr));
+	}
+	freeReplyObject(reply);
+}

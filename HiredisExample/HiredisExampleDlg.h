@@ -34,6 +34,7 @@ protected:
 	CEdit _editGet;
 	CEdit _editChannel;
 	CEdit _editPublishMessage;
+	CEdit _dbNum;
 
 	virtual BOOL OnInitDialog();
 	afx_msg void OnPaint();
@@ -52,4 +53,5 @@ private:
 public:
 	void AppendMsg(const WCHAR* msg);
 	afx_msg void OnBtnPSubscribe();
+	afx_msg void OnBtnDbChange();
 };
