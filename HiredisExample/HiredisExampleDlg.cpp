@@ -587,6 +587,7 @@ void CHiredisExampleDlg::OnBtnDbChange()
 		if (reply)
 		{
 			AppendMsg(L"切换数据库成功");
+			freeReplyObject(reply);
 		}
 		else
 		{
@@ -594,7 +595,6 @@ void CHiredisExampleDlg::OnBtnDbChange()
 			AppendMsg(L"切换数据库失败");
 			AppendMsg(A2W(_redisContext->errstr));
 		}
-		freeReplyObject(reply);
 	}
 	else
 	{
