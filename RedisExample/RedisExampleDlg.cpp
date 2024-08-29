@@ -414,10 +414,20 @@ void CRedisExampleDlg::OnBtnHSet()
 {
 	try
 	{
+		// 分别存入对象成员
 		_redis->hset("objectname", "key1", "value1");
 		_redis->hset("objectname", "key2", "value2");
 		_redis->hset("objectname", "key3", "value3");
 		AppendMsg(L"HSet key1 key2 key3成功");
+
+		// 批量存入对象成员
+		unordered_map<string, string> hash_map;
+		hash_map["key4"] = "value4";
+		hash_map["key5"] = "value5";
+		vector<pair<string, string>> fields;
+		fields.reserve(hash_map.size());
+		copy(hash_map.begin(), hash_map.end(), back_inserter(fields)); // 将unordered_map转换为vector<pair<string, string>>
+		_redis->hmset("objectname", fields.begin(), fields.end());
 
 		// 设置ttl为60s（可选）
 		_redis->expire("objectname", seconds(60));
@@ -465,12 +475,12 @@ void CRedisExampleDlg::OnBtnHGetall()
 		unordered_map<string, string> hash_map;
 		_redis->hgetall("objectname", inserter(hash_map, hash_map.end()));
 
-		string key1_value = hash_map["key1"];
-		AppendMsg(CString(key1_value.c_str()));
-		string key2_value = hash_map["key2"];
-		AppendMsg(CString(key2_value.c_str()));
-		string key3_value = hash_map["key3"];
-		AppendMsg(CString(key3_value.c_str()));
+		CString strLog;
+		for (auto& pair : hash_map)
+		{
+			AppendMsg(CString(pair.first.c_str()));
+			AppendMsg(CString(pair.second.c_str()));
+		}
 	}
 	catch (const Error& e)
 	{
