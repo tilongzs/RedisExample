@@ -5,6 +5,7 @@
 #include "afxdialogex.h"
 
 using namespace std;
+using namespace std::chrono;
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -55,6 +56,9 @@ BEGIN_MESSAGE_MAP(CRedisExampleDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_Subscribe, &CRedisExampleDlg::OnBtnSubscribe)
 	ON_BN_CLICKED(IDC_BUTTON_Publish, &CRedisExampleDlg::OnBtnPublish)
 	ON_BN_CLICKED(IDC_BUTTON_PSubscribe, &CRedisExampleDlg::OnBtnPSubscribe)
+	ON_BN_CLICKED(IDC_BUTTON_HSet, &CRedisExampleDlg::OnBtnHSet)
+	ON_BN_CLICKED(IDC_BUTTON_HGet, &CRedisExampleDlg::OnBtnHGet)
+	ON_BN_CLICKED(IDC_BUTTON_HGetall, &CRedisExampleDlg::OnBtnHGetall)
 END_MESSAGE_MAP()
 
 
@@ -165,8 +169,8 @@ void CRedisExampleDlg::OnBtnConn()
 		connection_options.host = redisIP.c_str();
 		connection_options.port = redisPort;
 		connection_options.socket_timeout = std::chrono::milliseconds(2000); // 长时间没收到订阅的消息，会导致socket_timeout 
-		connection_options.connect_timeout = std::chrono::milliseconds(1000);
-		//connection_options.password = "auth";
+		connection_options.connect_timeout = std::chrono::milliseconds(100);
+		connection_options.password = "233333";
 
 		// 连接池设置
 		ConnectionPoolOptions pool_options;
@@ -210,7 +214,8 @@ void CRedisExampleDlg::OnBtnSet()
 
 	try
 	{
-		bool ret = _redis->set(CStringA(strKey).GetBuffer(), CStringA(strValue).GetBuffer());
+		// 设置ttl为60s（可选）
+		bool ret = _redis->set(CStringA(strKey).GetBuffer(), CStringA(strValue).GetBuffer(), seconds(60));
 		if (ret)
 		{
 			AppendMsg(L"Set成功");
@@ -398,6 +403,74 @@ void CRedisExampleDlg::OnBtnPublish()
 	try
 	{
 		_redis->publish(strChannel.c_str(), strMessage.c_str());
+	}
+	catch (const Error& e)
+	{
+		AppendMsg(CString(e.what()));
+	}
+}
+
+void CRedisExampleDlg::OnBtnHSet()
+{
+	try
+	{
+		_redis->hset("objectname", "key1", "value1");
+		_redis->hset("objectname", "key2", "value2");
+		_redis->hset("objectname", "key3", "value3");
+		AppendMsg(L"HSet key1 key2 key3成功");
+
+		// 设置ttl为60s（可选）
+		_redis->expire("objectname", seconds(60));
+	}
+	catch (const Error& e)
+	{
+		AppendMsg(CString(e.what()));
+	}
+}
+
+void CRedisExampleDlg::OnBtnHGet()
+{
+	try
+	{
+		auto val = _redis->hget("objectname", "key1");
+		if (val)
+		{
+			AppendMsg(CString(val->c_str()));
+		}
+		else
+		{
+			AppendMsg(L"HGet key1为空");
+		}
+
+		val = _redis->hget("objectname", "key4");
+		if (val)
+		{
+			AppendMsg(CString(val->c_str()));
+		}
+		else
+		{
+			AppendMsg(L"HGet key4为空");
+		}
+	}
+	catch (const Error& e)
+	{
+		AppendMsg(CString(e.what()));
+	}
+}
+
+void CRedisExampleDlg::OnBtnHGetall()
+{
+	try
+	{
+		unordered_map<string, string> hash_map;
+		_redis->hgetall("objectname", inserter(hash_map, hash_map.end()));
+
+		string key1_value = hash_map["key1"];
+		AppendMsg(CString(key1_value.c_str()));
+		string key2_value = hash_map["key2"];
+		AppendMsg(CString(key2_value.c_str()));
+		string key3_value = hash_map["key3"];
+		AppendMsg(CString(key3_value.c_str()));
 	}
 	catch (const Error& e)
 	{

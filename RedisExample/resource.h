@@ -19,6 +19,10 @@
 #define IDC_EDIT_SubMessage             1012
 #define IDC_BUTTON_Publish              1013
 #define IDC_BUTTON_PSubscribe           1014
+#define IDC_BUTTON_HSet                 1016
+#define IDC_BUTTON_HGet                 1017
+#define IDC_BUTTON_HGet2                1018
+#define IDC_BUTTON_HGetall              1018
 
 // Next default values for new objects
 // 

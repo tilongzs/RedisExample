@@ -1,6 +1,5 @@
 ﻿#pragma once
-#include "redis++/redis++.h"
-#include "redis++/redis.h"
+#include <sw/redis++/redis++.h>
 using namespace sw::redis;
 
 #include <functional>
@@ -55,4 +54,7 @@ public:
 	afx_msg void OnBtnPublish();
 	CEdit _editPublishMessage;
 	afx_msg void OnBtnPSubscribe();
+	afx_msg void OnBtnHSet();
+	afx_msg void OnBtnHGet();
+	afx_msg void OnBtnHGetall();
 };
