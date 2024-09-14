@@ -475,6 +475,7 @@ void CRedisExampleDlg::OnBtnHGetall()
 		unordered_map<string, string> hash_map;
 		_redis->hgetall("objectname", inserter(hash_map, hash_map.end()));
 
+		// objectname不存在时，hash_map为空
 		CString strLog;
 		for (auto& pair : hash_map)
 		{
