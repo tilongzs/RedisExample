@@ -29,6 +29,7 @@ protected:
 	CEdit _editRecv;
 	CIPAddressCtrl _redisIP;
 	CEdit _editRedisPort;
+	CEdit _editPassword;
 	CButton _btnConn;
 
 	CEdit _editSetKey;

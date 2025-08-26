@@ -44,6 +44,7 @@ void CRedisExampleDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_SetValue, _editSetValue);
 	DDX_Control(pDX, IDC_EDIT_Sub, _editChannel);
 	DDX_Control(pDX, IDC_EDIT_SubMessage, _editPublishMessage);
+	DDX_Control(pDX, IDC_EDIT_PASSWORD, _editPassword);
 }
 
 BEGIN_MESSAGE_MAP(CRedisExampleDlg, CDialogEx)
@@ -161,6 +162,8 @@ void CRedisExampleDlg::OnBtnConn()
 	CString strRedisPort;
 	_editRedisPort.GetWindowText(strRedisPort);
 	int redisPort = _wtoi(strRedisPort);
+	CString strPassword;
+	_editPassword.GetWindowText(strPassword);
 
 	try
 	{
@@ -170,7 +173,7 @@ void CRedisExampleDlg::OnBtnConn()
 		connection_options.port = redisPort;
 		connection_options.socket_timeout = std::chrono::milliseconds(2000); // 长时间没收到订阅的消息，会导致socket_timeout 
 		connection_options.connect_timeout = std::chrono::milliseconds(100);
-		connection_options.password = "233333";
+		connection_options.password = CStringA(strPassword).GetBuffer();
 
 		// 连接池设置
 		ConnectionPoolOptions pool_options;
@@ -185,6 +188,7 @@ void CRedisExampleDlg::OnBtnConn()
 
 		_redisIP.EnableWindow(FALSE);
 		_editRedisPort.EnableWindow(FALSE);
+		_editPassword.EnableWindow(FALSE);
 		_btnConn.EnableWindow(FALSE);
 		AppendMsg(L"创建Redis连接完成");
 	}
@@ -450,6 +454,16 @@ void CRedisExampleDlg::OnBtnHGet()
 		else
 		{
 			AppendMsg(L"HGet key1为空");
+		}
+
+		val = _redis->hget("objectname_null", "key1");
+		if (val)
+		{
+			AppendMsg(CString(val->c_str()));
+		}
+		else
+		{
+			AppendMsg(L"HGet key4为空");
 		}
 
 		val = _redis->hget("objectname", "key4");
